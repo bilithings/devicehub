@@ -3,6 +3,7 @@ import logger from "../util/logger.js";
 import { MessageType } from "@protobuf-ts/runtime";
 import { Envelope } from "./wire.ts";
 import { Any } from "./google/protobuf/any.ts";
+import {runWithObservation} from "../util/observability.js";
 
 const log = logger.createLogger("wire:router");
 
@@ -95,8 +96,16 @@ export class WireRouter {
             //     messageType.toJsonString(decodedMessage)
             // )
 
-            this.emitter.emit(messageType.typeName, decoded.channel || channel, decodedMessage, data)
-            this.emitter.emit('message', channel)
+            runWithObservation({
+                traceId: decoded.traceId,
+                sessionId: decoded.sessionId,
+                userKey: decoded.userKey,
+                deviceSerial: decoded.deviceSerial,
+                operation: decoded.operation
+            }, () => {
+                this.emitter.emit(messageType.typeName, decoded.channel || channel, decodedMessage, data)
+                this.emitter.emit('message', channel)
+            })
         }
     }
 }

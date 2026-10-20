@@ -10,6 +10,7 @@ import rateLimitConfig from '../../../ratelimit/index.js'
 import cookieSession from 'cookie-session'
 import csrf from 'csurf'
 import * as apiutil from '../../../../util/apiutil.js'
+import {requestObservationMiddleware} from '../../../../util/observability.js'
 
 interface ApkPluginOptions {
     cacheDir: string
@@ -75,6 +76,7 @@ function proxyRequest(
 export default function(options: ApkPluginOptions): void {
     const log = logger.createLogger('storage:plugins:apk')
     const app = express()
+    app.use(requestObservationMiddleware('storage-apk', log))
     const server = http.createServer(app)
     const route: Router = express.Router()
 

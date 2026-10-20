@@ -11,6 +11,12 @@ message Envelope {
   // required MessageType type = 1;
   required google.protobuf.Any message = 2;
   optional string channel = 3;
+  // Optional observability context. Older services can safely ignore these fields.
+  optional string traceId = 4;
+  optional string sessionId = 5;
+  optional string userKey = 6;
+  optional string deviceSerial = 7;
+  optional string operation = 8;
 }
 
 message UpdateAccessTokenMessage {

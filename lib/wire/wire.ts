@@ -25,6 +25,16 @@ export interface Envelope {
      * @generated from protobuf field: optional string channel = 3
      */
     channel?: string;
+    /** @generated from protobuf field: optional string traceId = 4 */
+    traceId?: string;
+    /** @generated from protobuf field: optional string sessionId = 5 */
+    sessionId?: string;
+    /** @generated from protobuf field: optional string userKey = 6 */
+    userKey?: string;
+    /** @generated from protobuf field: optional string deviceSerial = 7 */
+    deviceSerial?: string;
+    /** @generated from protobuf field: optional string operation = 8 */
+    operation?: string;
 }
 /**
  * @generated from protobuf message UpdateAccessTokenMessage
@@ -2496,7 +2506,12 @@ class Envelope$Type extends MessageType<Envelope> {
     constructor() {
         super("Envelope", [
             { no: 2, name: "message", kind: "message", T: () => Any },
-            { no: 3, name: "channel", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ }
+            { no: 3, name: "channel", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "traceId", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "sessionId", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "userKey", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "deviceSerial", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "operation", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<Envelope>): Envelope {
@@ -2516,6 +2531,21 @@ class Envelope$Type extends MessageType<Envelope> {
                 case /* optional string channel */ 3:
                     message.channel = reader.string();
                     break;
+                case /* optional string traceId */ 4:
+                    message.traceId = reader.string();
+                    break;
+                case /* optional string sessionId */ 5:
+                    message.sessionId = reader.string();
+                    break;
+                case /* optional string userKey */ 6:
+                    message.userKey = reader.string();
+                    break;
+                case /* optional string deviceSerial */ 7:
+                    message.deviceSerial = reader.string();
+                    break;
+                case /* optional string operation */ 8:
+                    message.operation = reader.string();
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -2534,6 +2564,21 @@ class Envelope$Type extends MessageType<Envelope> {
         /* optional string channel = 3; */
         if (message.channel !== undefined)
             writer.tag(3, WireType.LengthDelimited).string(message.channel);
+        /* optional string traceId = 4; */
+        if (message.traceId !== undefined)
+            writer.tag(4, WireType.LengthDelimited).string(message.traceId);
+        /* optional string sessionId = 5; */
+        if (message.sessionId !== undefined)
+            writer.tag(5, WireType.LengthDelimited).string(message.sessionId);
+        /* optional string userKey = 6; */
+        if (message.userKey !== undefined)
+            writer.tag(6, WireType.LengthDelimited).string(message.userKey);
+        /* optional string deviceSerial = 7; */
+        if (message.deviceSerial !== undefined)
+            writer.tag(7, WireType.LengthDelimited).string(message.deviceSerial);
+        /* optional string operation = 8; */
+        if (message.operation !== undefined)
+            writer.tag(8, WireType.LengthDelimited).string(message.operation);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

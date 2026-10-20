@@ -2,6 +2,7 @@ import { io } from 'socket.io-client'
 
 import { variablesConfig } from '@/config/variables.config'
 import { authStore } from '@/store/auth-store'
+import { getRequestObservation } from './observability'
 
 export const socket = io(variablesConfig[import.meta.env.MODE].websocketUrl, {
   autoConnect: false,
@@ -9,6 +10,6 @@ export const socket = io(variablesConfig[import.meta.env.MODE].websocketUrl, {
   reconnection: true,
   transports: ['websocket'],
   auth: (cb) => {
-    cb({ token: authStore.jwt })
+    cb({ token: authStore.jwt, ...getRequestObservation() })
   },
 })

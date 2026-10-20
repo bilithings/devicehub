@@ -7,6 +7,7 @@ import { DeviceBySerialStore } from '@/store/device-by-serial-store'
 import { deviceErrorModalStore } from '@/store/device-error-modal-store'
 import { deviceConnectionRequired } from '@/config/inversify/decorators'
 import { authStore } from '@/store/auth-store'
+import { getRequestObservation } from '@/api/observability'
 
 import type { ElementBoundSize, StartScreenStreamingMessage } from './types'
 import type { Device } from '@/generated/types'
@@ -242,7 +243,11 @@ export class DeviceScreenStore {
     }
 
     // Pass JWT token securely via WebSocket subprotocol
-    this.websocket = new WebSocket(this.device.display.url, `access_token.${authStore.jwt}`)
+    const screenObservation = getRequestObservation()
+    const screenUrl = new URL(this.device.display.url)
+    screenUrl.searchParams.set('session_id', screenObservation.sessionId)
+    screenUrl.searchParams.set('trace_id', screenObservation.traceId)
+    this.websocket = new WebSocket(screenUrl.toString(), `access_token.${authStore.jwt}`)
 
     this.websocket.binaryType = 'blob'
     this.websocket.onopen = this.openListener.bind(this)

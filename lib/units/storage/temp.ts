@@ -15,6 +15,7 @@ import rateLimitConfig from '../ratelimit/index.js'
 import { accessTokenAuth } from '../api/helpers/securityHandlers.js'
 import cookieSession from 'cookie-session'
 import db from '../../db/index.js'
+import {requestObservationMiddleware} from '../../util/observability.js'
 
 // @ts-ignore
 import formidable from 'formidable'
@@ -61,6 +62,7 @@ export default async function (options: TempOptions) {
 
     const log = logger.createLogger('storage:temp')
     const app = express()
+    app.use(requestObservationMiddleware('storage', log))
     const server = http.createServer(app)
     const storage = new Storage()
     const route = express.Router()

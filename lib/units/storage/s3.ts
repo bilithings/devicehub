@@ -10,6 +10,7 @@ import { fromIni } from '@aws-sdk/credential-providers'
 import { S3 } from '@aws-sdk/client-s3'
 import logger from '../../util/logger.js'
 import rateLimitConfig from '../ratelimit/index.js'
+import {requestObservationMiddleware} from '../../util/observability.js'
 
 // @ts-ignore
 import formidable from 'formidable'
@@ -40,6 +41,7 @@ interface ResourceResponse {
 export default function (options: S3Options) {
     const log = logger.createLogger('storage:s3')
     const app = express()
+    app.use(requestObservationMiddleware('storage-s3', log))
     const server = http.createServer(app)
     const s3 = new S3({
         // JS SDK v3 switched credential providers from classes to functions.

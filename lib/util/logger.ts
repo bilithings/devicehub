@@ -1,6 +1,7 @@
 import {printf} from 'fast-printf'
 import {EventEmitter} from 'events'
 import chalk from 'chalk'
+import {formatObservationContext, getObservationContext} from './observability.js'
 
 export enum LogLevel {
     DEBUG = 1,
@@ -121,7 +122,7 @@ export class Log extends EventEmitter {
             priority,
             tag: this.tag,
             pid: process.pid,
-            identifier: this.localIdentifier || '*',
+            identifier: this.localIdentifier || globalLogger.globalIdentifier || '*',
             args
         }
     }
@@ -130,8 +131,25 @@ export class Log extends EventEmitter {
         const args = entry.args as [string, ...any[]]
         entry.message = printf(...args)
         const [fg, bg] = Log.unitColors[entry.unit] ?? [chalk.yellow, chalk.bgYellow]
+        const observation = getObservationContext()
+        if (!observation.deviceSerial && entry.identifier !== '*') {
+            observation.deviceSerial = entry.identifier
+        }
+        if (process.env.OBS_LOG_FORMAT === 'json') {
+            return `${JSON.stringify({
+                timestamp: entry.timestamp.toISOString(),
+                unit: entry.unit,
+                level: Log.names[entry.priority],
+                tag: entry.tag,
+                pid: entry.pid,
+                identifier: entry.identifier,
+                message: entry.message,
+                ...observation
+            })}\n`
+        }
+        const suffix = formatObservationContext(observation)
         return (
-            `${chalk.grey(entry.timestamp.toJSON())} ${fg(bg(entry.unit))} ${this._name(entry.priority)}/${chalk.bold(entry.tag)} ${entry.pid} [${entry.identifier}] ${entry.message}\n`
+            `${chalk.grey(entry.timestamp.toJSON())} ${fg(bg(entry.unit))} ${this._name(entry.priority)}/${chalk.bold(entry.tag)} ${entry.pid} [${entry.identifier}] ${entry.message}${suffix}\n`
         )
     }
 

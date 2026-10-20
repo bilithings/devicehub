@@ -3,11 +3,16 @@ import { globalToast } from '@/store/global-toast'
 
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import type { ErrorResponse, UnexpectedErrorResponse } from '@/generated/types'
+import { getRequestObservation } from './observability'
 
 export const attachTokenOnRequest = (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
   const { jwt } = authStore
 
   config.headers.Authorization = `Bearer ${jwt}`
+  const observation = getRequestObservation()
+  config.headers['X-Request-ID'] = observation.requestId
+  config.headers['X-Trace-ID'] = observation.traceId
+  config.headers['X-Session-ID'] = observation.sessionId
 
   return config
 }

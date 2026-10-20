@@ -5,6 +5,8 @@ import { Any } from './google/protobuf/any.ts';
 import { createLogger } from '../util/logger.ts';
 import {MessageType} from "@protobuf-ts/runtime";
 import { ADBDeviceType } from '../units/provider/ADBObserver.js';
+import {getObservationContext} from '../util/observability.js';
+import type {ObservationContext} from '../util/observability.js';
 
 const DEVICE_STATUS_MAP = {
     device: 'ONLINE',
@@ -48,12 +50,20 @@ const wireutil = {
     // envelope(Message.create({...})) // <- forbidden - no way to extract the type
     // envelope(new wire.Message(...))
 
-    pack<T extends object>(messageType: MessageType<T>, message: T, channel: string | undefined = undefined) {
-        return Envelope.toBinary({ message: Any.pack(message, messageType), channel} )
+    pack<T extends object>(messageType: MessageType<T>, message: T, channel: string | undefined = undefined, context: ObservationContext = getObservationContext()) {
+        return Envelope.toBinary({
+            message: Any.pack(message, messageType),
+            channel,
+            traceId: context.traceId,
+            sessionId: context.sessionId,
+            userKey: context.userKey,
+            deviceSerial: context.deviceSerial,
+            operation: context.operation
+        } )
     },
 
-    tr<T extends object>(channel: string, messageType: MessageType<T>, message: T) {
-        return Envelope.toBinary({ message: Any.pack(message, messageType), channel} )
+    tr<T extends object>(channel: string, messageType: MessageType<T>, message: T, context: ObservationContext = getObservationContext()) {
+        return this.pack(messageType, message, channel, context)
     },
 
     /**
