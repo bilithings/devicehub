@@ -5,6 +5,7 @@ export const OPENSTF_API_ROUTES = {
   team: '/team',
   users: '/users',
   user: '/user',
+  userDevice: (serial: string) => `/user/devices/${encodeURIComponent(serial)}`,
   accessTokens: '/user/accessTokens',
   accessTokenByTitle: '/user/accessTokens/byTitle',
   adbRange: '/devices/adbRange',

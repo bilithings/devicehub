@@ -136,6 +136,26 @@ export default async (options: Options): Promise<void> => {
         .handler()
     )
 
+    const pushDeviceStatus = (serial: string, type: ADBDevice['type']) => {
+        push.send([
+            wireutil.global,
+            wireutil.pack(DeviceStatusMessage, {
+                serial,
+                status: wireutil.toDeviceStatus(type)
+            })
+        ])
+    }
+
+    const logDeviceLifecycle = (
+        event: string,
+        serial: string,
+        oldStatus: string,
+        newStatus: string
+    ) => {
+        const managedProcess = processManager.get(serial)
+        log.info(`device.lifecycle event=${event} deviceSerial=${serial} oldStatus=${oldStatus} newStatus=${newStatus} workerPort=${managedProcess?.resources?.[0] ?? 'none'} workerState=${managedProcess?.state ?? 'none'} providerName=${options.name}`)
+    }
+
     let statsTimer: NodeJS.Timeout
     const stats = (twice = true) => {
         const processStats = processManager.getStats()
@@ -173,6 +193,7 @@ export default async (options: Options): Promise<void> => {
     )
 
     const removeDevice = async(device: ADBDevice) => {
+        logDeviceLifecycle('worker_removing', device.serial, device.type, 'absent')
         try {
             log.info('Removing device %s', device.serial)
             await processManager.remove(device.serial)
@@ -248,10 +269,13 @@ export default async (options: Options): Promise<void> => {
 
         if (!started) {
             log.error('Failed to start device process [%s]', device.serial)
+            logDeviceLifecycle('worker_start_failed', device.serial, device.type, device.type)
             return startDeviceWork(device, true, false)
         }
 
         stats()
+
+        logDeviceLifecycle('worker_ready', device.serial, device.type, device.type)
 
         // Tell others the device state changed
         push.send([
@@ -302,12 +326,14 @@ export default async (options: Options): Promise<void> => {
         }
 
         log.info('Connected device "%s" [%s]', device.serial, device.type)
+        logDeviceLifecycle('device_connected', device.serial, 'absent', device.type)
 
         // Create device context with registration promise
         const deviceContext: DeviceContext = {
             device,
             register: register(device) // Register device immediately, before 'running' state
         }
+        pushDeviceStatus(device.serial, device.type)
 
         // Create managed process
         const created = await processManager.create(device.serial, deviceContext, {
@@ -343,6 +369,8 @@ export default async (options: Options): Promise<void> => {
 
     tracker.on('update', filterDevice(async(device, oldType) => {
         log.info('Device "%s" is now "%s" (was "%s")', device.serial, device.type, oldType)
+        logDeviceLifecycle('status_changed', device.serial, oldType || 'unknown', device.type)
+        pushDeviceStatus(device.serial, device.type)
 
         if (!['device', 'emulator'].includes(device.type)) {
             // Device went offline - stop worker but keep it in waiting state
@@ -359,6 +387,7 @@ export default async (options: Options): Promise<void> => {
 
                 // Set back to waiting state (keep process and ports allocated)
                 processManager.setState(device.serial, 'waiting')
+                logDeviceLifecycle('worker_stopped', device.serial, 'device', device.type)
             }
             return
         }

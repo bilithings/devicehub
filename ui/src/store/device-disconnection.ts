@@ -2,6 +2,7 @@ import { makeAutoObservable } from 'mobx'
 import { inject, injectable } from 'inversify'
 
 import { GroupService } from '@/services/group-service'
+import { releaseUserDevice } from '@/api/openstf-api'
 
 import { CONTAINER_IDS } from '@/config/inversify/container-ids'
 
@@ -11,7 +12,11 @@ export class DeviceDisconnection {
     makeAutoObservable(this)
   }
 
-  async stopUsingDevice(serial: string, channel: string): Promise<unknown> {
+  async stopUsingDevice(serial: string, channel: string, force = false): Promise<unknown> {
+    if (force) {
+      return releaseUserDevice(serial)
+    }
+
     return this.groupService.kick(serial, channel)
   }
 }

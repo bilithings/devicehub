@@ -52,6 +52,7 @@ import {
     DeviceTypeMessage,
     DeleteDevice,
     GetServicesAvailabilityMessage,
+    DeviceStatus,
     DeviceRegisteredMessage, GetPresentDevices, DeviceGetIsInOrigin, GetDeadDevices, DeviceIosIntroductionMessage
 } from '../../wire/wire.js'
 
@@ -62,6 +63,7 @@ interface Options {
         devDealer: string[]
     }
     publicIp: string
+    offlineReleaseDelayMs?: number
 }
 
 export default db.ensureConnectivity(async(options: Options) => {
@@ -113,6 +115,77 @@ export default db.ensureConnectivity(async(options: Options) => {
         }
     }))
 
+    const configuredOfflineReleaseDelayMs = options.offlineReleaseDelayMs ??
+        Number.parseInt(process.env.STF_PROCESSOR_OFFLINE_RELEASE_DELAY_MS || '30000', 10)
+    const offlineReleaseDelayMs = Math.max(
+        0,
+        Number.isFinite(configuredOfflineReleaseDelayMs) ? configuredOfflineReleaseDelayMs : 30000
+    )
+    const offlineReleaseTimers = new Map<string, NodeJS.Timeout>()
+
+    const clearOfflineReleaseTimer = (serial: string) => {
+        const timer = offlineReleaseTimers.get(serial)
+        if (timer) {
+            clearTimeout(timer)
+            offlineReleaseTimers.delete(serial)
+        }
+    }
+
+    const releaseOfflineDevice = async(serial: string) => {
+        offlineReleaseTimers.delete(serial)
+
+        const device = await DeviceModel.loadDeviceBySerial(serial)
+        if (!device || ![DeviceStatus.OFFLINE, DeviceStatus.UNAUTHORIZED].includes(device.status) || !device.owner) {
+            return
+        }
+
+        const owner = device.owner
+        const ownerMessage = {
+            email: owner.email,
+            name: owner.name || owner.email,
+            group: owner.group
+        }
+
+        await Promise.all([
+            dbapi.setDeviceState(serial, {owner: null, usage: null, timeout: 0}),
+            dbapi.unsetDeviceConnectUrl(serial),
+            dbapi.sendEvent(
+                'device_leave',
+                {reason: 'offline_timeout'},
+                {deviceSerial: serial, userEmail: owner.email, groupId: owner.group},
+                Date.now()
+            )
+        ])
+
+        log.warn(
+            'Automatically released device "%s" after %s ms of offline/unauthorized state (owner=%s)',
+            serial,
+            offlineReleaseDelayMs,
+            owner.email
+        )
+
+        appDealer.send([
+            wireutil.global,
+            wireutil.pack(LeaveGroupMessage, {
+                serial,
+                owner: ownerMessage,
+                reason: 'status_change'
+            })
+        ])
+    }
+
+    const scheduleOfflineRelease = (serial: string) => {
+        if (offlineReleaseTimers.has(serial)) return
+
+        offlineReleaseTimers.set(serial, setTimeout(() => {
+            releaseOfflineDevice(serial).catch(err => {
+                offlineReleaseTimers.delete(serial)
+                log.error('Failed to automatically release offline device "%s": %s', serial, err?.message || err)
+                scheduleOfflineRelease(serial)
+            })
+        }, offlineReleaseDelayMs))
+    }
+
     const defaultWireHandler =
         (channel: string, _: any, data: any) =>
             appDealer.send([channel, data])
@@ -154,11 +227,20 @@ export default db.ensureConnectivity(async(options: Options) => {
             appDealer.send([channel, data])
         })
         .on(DeviceAbsentMessage, async (channel, message, data) => {
+            clearOfflineReleaseTimer(message.serial)
             await dbapi.setDeviceAbsent(message.serial)
             appDealer.send([channel, data])
         })
-        .on(DeviceStatusMessage, (channel, message, data) => {
-            dbapi.saveDeviceStatus(message.serial, message.status)
+        .on(DeviceStatusMessage, async (channel, message, data) => {
+            await dbapi.saveDeviceStatus(message.serial, message.status)
+
+            if ([DeviceStatus.OFFLINE, DeviceStatus.UNAUTHORIZED].includes(message.status)) {
+                scheduleOfflineRelease(message.serial)
+            }
+            else {
+                clearOfflineReleaseTimer(message.serial)
+            }
+
             appDealer.send([channel, data])
         })
         .on(DeviceReadyMessage, async (channel, message, data) => {
@@ -320,6 +402,9 @@ export default db.ensureConnectivity(async(options: Options) => {
     devDealer.on('message', router)
 
     lifecycle.observe(() => {
+        offlineReleaseTimers.forEach(timer => clearTimeout(timer))
+        offlineReleaseTimers.clear()
+
         ;[appDealer, devDealer].forEach(function(sock) {
             try {
                 sock.close()

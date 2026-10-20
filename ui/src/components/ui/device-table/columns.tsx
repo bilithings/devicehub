@@ -118,9 +118,9 @@ export const DEVICE_COLUMNS = [
     filterFn: startsWithFilter,
     sortingFn: deviceStatusSorting,
     cell: ({ getValue, row }) => {
-      const { serial, channel } = row.original
+      const { serial, channel, using } = row.original
 
-      return <DeviceStatusCell channel={channel} deviceState={getValue()} serial={serial} />
+      return <DeviceStatusCell channel={channel} deviceState={getValue()} serial={serial} using={using} />
     },
   }),
   /* NOTE: OS & Hardware Group */

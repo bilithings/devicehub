@@ -14,9 +14,9 @@ services:
             - "443:443"
         depends_on:
             devicehub-app:
-                condition: service_started
+                condition: service_healthy
             devicehub-websocket:
-                condition: service_started
+                condition: service_healthy
             devicehub-storage-temp:
                 condition: service_started
             devicehub-storage-plugin-apk:
@@ -24,13 +24,18 @@ services:
             devicehub-storage-plugin-image:
                 condition: service_started
             devicehub-api:
-                condition: service_started
+                condition: service_healthy
             devicehub-auth:
-                condition: service_started
+                condition: service_healthy
             devicehub-provider:
                 condition: service_started
             devicehub-ssl:
                 condition: service_completed_successfully
+        healthcheck:
+            test: ["CMD-SHELL", "nginx -t"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
         restart: unless-stopped
         networks:
             devicehub:
@@ -86,6 +91,12 @@ services:
         depends_on:
             devicehub-migrate:
                 condition: service_completed_successfully
+        healthcheck:
+            test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health/ready"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+            start_period: 15s
         restart: unless-stopped
         networks:
             devicehub:
@@ -99,6 +110,12 @@ services:
         depends_on:
             devicehub-migrate:
                 condition: service_completed_successfully
+        healthcheck:
+            test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health/ready"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+            start_period: 15s
         restart: unless-stopped
         networks:
             devicehub:
@@ -112,10 +129,6 @@ services:
           stf processor --name processor
           --connect-app-dealer tcp://devicehub-triproxy-app:7160
           --connect-dev-dealer tcp://devicehub-triproxy-dev:7260
-          --connect-push tcp://devicehub-triproxy-app:7170
-          --connect-push-dev tcp://devicehub-triproxy-dev:7270
-          --connect-sub tcp://devicehub-triproxy-app:7150
-          --connect-sub-dev tcp://devicehub-triproxy-dev:7250
         depends_on:
             devicehub-migrate:
                 condition: service_completed_successfully
@@ -218,6 +231,12 @@ services:
         depends_on:
             devicehub-migrate:
                 condition: service_completed_successfully
+        healthcheck:
+            test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health/ready"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+            start_period: 15s
         restart: unless-stopped
         networks:
             devicehub:
@@ -231,6 +250,12 @@ services:
         depends_on:
             devicehub-migrate:
                 condition: service_completed_successfully
+        healthcheck:
+            test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health/ready"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+            start_period: 15s
         restart: unless-stopped
         networks:
             devicehub:
@@ -244,8 +269,6 @@ services:
           stf groups-engine
           --connect-push tcp://devicehub-triproxy-app:7170
           --connect-push-dev tcp://devicehub-triproxy-dev:7270
-          --connect-sub tcp://devicehub-triproxy-app:7150
-          --connect-sub-dev tcp://devicehub-triproxy-dev:7250
         depends_on:
             devicehub-migrate:
                 condition: service_completed_successfully
@@ -264,7 +287,7 @@ services:
             devicehub-migrate:
                 condition: service_completed_successfully
         restart: unless-stopped
-        command: stf provider --name devicehub-provider --adb-host host.docker.internal --no-cleanup --connect-sub tcp://devicehub-triproxy-dev:7250 --connect-push tcp://devicehub-triproxy-dev:7270 --storage-url http://devicehub-storage-plugin-apk:3000/ --public-ip ${STF_DOMAIN} --min-port=12010 --max-port=12100 --heartbeat-interval 10000 --screen-ws-url-pattern "wss://${STF_DOMAIN}:${STF_PORT}/d/devicehub-provider/<%= publicPort %>/" --secret=${STF_SECRET}
+        command: stf provider --name devicehub-provider --adb-host host.docker.internal --allow-remote --no-cleanup --connect-sub tcp://devicehub-triproxy-dev:7250 --connect-push tcp://devicehub-triproxy-dev:7270 --storage-url http://devicehub-storage-plugin-apk:3000/ --public-ip ${STF_DOMAIN} --min-port=12010 --max-port=12100 --heartbeat-interval 10000 --screen-ws-url-pattern "wss://${STF_DOMAIN}:${STF_PORT}/d/devicehub-provider/<%= publicPort %>/" --secret=${STF_SECRET}
         networks:
             devicehub:
     devicehub-ssl:

@@ -301,6 +301,12 @@ export const removeDevice = async ({ serial, ...params }: RemoveDeviceArgs): Pro
   return data.success
 }
 
+export const releaseUserDevice = async (serial: string): Promise<boolean> => {
+  const { data } = await openstfApiClient.delete<DefaultResponse>(OPENSTF_API_ROUTES.userDevice(serial))
+
+  return data.success
+}
+
 export const removeDevices = async ({ ids, ...params }: RemoveDevicesArgs): Promise<boolean> => {
   const { data } = await openstfApiClient.delete<DefaultResponse>(OPENSTF_API_ROUTES.devices, {
     params,

@@ -16,18 +16,22 @@ import type { ListDevice } from '@/types/list-device.type'
 type DeviceStatusCellProps = {
   serial: ListDevice['serial']
   channel: ListDevice['channel']
+  using: ListDevice['using']
   deviceState: DeviceState
 }
 
-export const DeviceStatusCell = memo(({ serial, channel, deviceState }: DeviceStatusCellProps) => {
+export const DeviceStatusCell = memo(({ serial, channel, using, deviceState }: DeviceStatusCellProps) => {
   const { t } = useTranslation()
 
   const deviceDisconnection = useInjection(CONTAINER_IDS.deviceDisconnection)
 
-  const onStopUsing = () => {
-    if (!channel) return
+  const forceRelease = deviceState === DeviceState.OFFLINE || deviceState === DeviceState.UNAUTHORIZED
+  const canRelease = using && (forceRelease || !!channel)
 
-    deviceDisconnection.stopUsingDevice(serial, channel)
+  const onStopUsing = () => {
+    if (!canRelease) return
+
+    deviceDisconnection.stopUsingDevice(serial, channel || '', forceRelease)
   }
 
   return (
@@ -45,13 +49,25 @@ export const DeviceStatusCell = memo(({ serial, channel, deviceState }: DeviceSt
         </Button>
       </ConditionalRender>
       <ConditionalRender conditions={[deviceState === DeviceState.OFFLINE]}>
-        <Button appearance='negative' mode='outline' title={deviceState} disabled>
-          {t('Offline')}
+        <Button
+          appearance={using ? 'positive' : 'negative'}
+          mode='outline'
+          title={using ? t('Stop Using') : deviceState}
+          disabled={!canRelease}
+          onClick={onStopUsing}
+        >
+          {using ? t('Stop Using') : t('Offline')}
         </Button>
       </ConditionalRender>
       <ConditionalRender conditions={[deviceState === DeviceState.UNAUTHORIZED]}>
-        <Button appearance='negative' mode='outline' title={deviceState} disabled>
-          {t('Unauthorized')}
+        <Button
+          appearance={using ? 'positive' : 'negative'}
+          mode='outline'
+          title={using ? t('Stop Using') : deviceState}
+          disabled={!canRelease}
+          onClick={onStopUsing}
+        >
+          {using ? t('Stop Using') : t('Unauthorized')}
         </Button>
       </ConditionalRender>
       <ConditionalRender conditions={[deviceState === DeviceState.PREPARING]}>
